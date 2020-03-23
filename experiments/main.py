@@ -22,11 +22,14 @@ def main():
     parser.add_argument('--gridsearch', default=False, action='store_true', help='Enable grid search')
     parser.add_argument('--sinkhorn', default=False, action='store_true', help='Use sinkhorn approximation')
     parser.add_argument('--h', type = int, required=False, default=2, help = "(Max) number of WL iterations")
+    parser.add_argument('--repetitions', type=int, required=False, default=1, help='Repetitions of whatever you do for statistical analysis')
 
     args = parser.parse_args()
     dataset = args.dataset
     h = args.h
     sinkhorn = args.sinkhorn
+    repetitions = args.repetitions
+
     print(f'Generating results for {dataset}...')
     #---------------------------------
     # Setup
@@ -105,76 +108,87 @@ def main():
     print('Kernel matrices computed.')
     print()
 
-    #---------------------------------
-    # Classification
-    #---------------------------------
-    # Run hyperparameter search if needed
-    print(f'Running SVMs, crossvalidation: {args.crossvalidation}, gridsearch: {args.gridsearch}.')
-    # Load labels
-    label_file = os.path.join(data_path, 'Labels.txt')
-    y = np.array(read_labels(label_file))
-
-    # Contains accuracy scores for each cross validation step; the
-    # means of this list will be used later on.
-    accuracy_scores = []
     np.random.seed(42)
+    all_accuracies = list()
+    for repetition in range(repetitions):
+
+        #---------------------------------
+        # Classification
+        #---------------------------------
+        # Run hyperparameter search if needed
+        print(f'Running SVMs, crossvalidation: {args.crossvalidation}, gridsearch: {args.gridsearch}.')
+        # Load labels
+        label_file = os.path.join(data_path, 'Labels.txt')
+        y = np.array(read_labels(label_file))
+
+        # Contains accuracy scores for each cross validation step; the
+        # means of this list will be used later on.
+        accuracy_scores = []
+
+        cv = StratifiedKFold(n_splits=10, shuffle=True)
+        # Hyperparam logging
+        best_C = []
+        best_h = []
+        best_gamma = []
+
+        for train_index, test_index in cv.split(kernel_matrices[0], y):
+            K_train = [K[train_index][:, train_index] for K in kernel_matrices]
+            K_test  = [K[test_index][:, train_index] for K in kernel_matrices]
+            y_train, y_test = y[train_index], y[test_index]
+
+            # Gridsearch
+            if args.gridsearch:
+                gs, best_params = custom_grid_search_cv(SVC(kernel='precomputed'),
+                        param_grid, K_train, y_train, cv=5)
+                # Store best params
+                C_ = best_params['params']['C']
+                h_, gamma_ = kernel_params[best_params['K_idx']]
+                y_pred = gs.predict(K_test[best_params['K_idx']])
+            else:
+                gs = SVC(C=100, kernel='precomputed').fit(K_train[0], y_train)
+                y_pred = gs.predict(K_test[0])
+                h_, gamma_, C_ = h, gammas[0], 100
+            best_C.append(C_)
+            best_h.append(h_)
+            best_gamma.append(gamma_)
+
+            acc = accuracy_score(y_test, y_pred)
+            accuracy_scores.append(acc)
+            all_accuracies.append(acc)
+            if not args.crossvalidation:
+                break
     
-    cv = StratifiedKFold(n_splits=10, shuffle=True)
-    # Hyperparam logging
-    best_C = []
-    best_h = []
-    best_gamma = []
-
-    for train_index, test_index in cv.split(kernel_matrices[0], y):
-        K_train = [K[train_index][:, train_index] for K in kernel_matrices]
-        K_test  = [K[test_index][:, train_index] for K in kernel_matrices]
-        y_train, y_test = y[train_index], y[test_index]
-
-        # Gridsearch
-        if args.gridsearch:
-            gs, best_params = custom_grid_search_cv(SVC(kernel='precomputed'), 
-                    param_grid, K_train, y_train, cv=5)
-            # Store best params
-            C_ = best_params['params']['C']
-            h_, gamma_ = kernel_params[best_params['K_idx']]
-            y_pred = gs.predict(K_test[best_params['K_idx']])
-        else:
-            gs = SVC(C=100, kernel='precomputed').fit(K_train[0], y_train)
-            y_pred = gs.predict(K_test[0])
-            h_, gamma_, C_ = h, gammas[0], 100 
-        best_C.append(C_)
-        best_h.append(h_)
-        best_gamma.append(gamma_)
-
-        accuracy_scores.append(accuracy_score(y_test, y_pred))
-        if not args.crossvalidation:
-            break
-    
-    #---------------------------------
-    # Printing and logging
-    #---------------------------------
-    if args.crossvalidation:
-        print('Mean 10-fold accuracy: {:2.2f} +- {:2.2f} %'.format(
-                    np.mean(accuracy_scores) * 100,  
-                    np.std(accuracy_scores) * 100))
-    else:
-        print('Final accuracy: {:2.3f} %'.format(np.mean(accuracy_scores)*100))
-
-    # Save to file
-    if args.crossvalidation or args.gridsearch:
-        extension = ''
+        #---------------------------------
+        # Printing and logging
+        #---------------------------------
         if args.crossvalidation:
-            extension += '_crossvalidation'
-        if args.gridsearch:
-            extension += '_gridsearch'
-        results_filename = os.path.join(results_path, f'results_{dataset}'+extension+'.csv')
-        n_splits = 10 if args.crossvalidation else 1
-        pd.DataFrame(np.array([best_h, best_C, best_gamma, accuracy_scores]).T, 
-                columns=[['h', 'C', 'gamma', 'accuracy']], 
-                index=['fold_id{}'.format(i) for i in range(n_splits)]).to_csv(results_filename)
-        print(f'Results saved in {results_filename}.')
-    else:
-        print('No results saved to file as --crossvalidation or --gridsearch were not selected.')
+            print('Mean 10-fold accuracy: {:2.2f} +- {:2.2f} %'.format(
+                        np.mean(accuracy_scores) * 100,
+                        np.std(accuracy_scores) * 100))
+        else:
+            print('Final accuracy: {:2.3f} %'.format(np.mean(accuracy_scores)*100))
+
+        # Save to file
+        if args.crossvalidation or args.gridsearch:
+            extension = ''
+            if args.crossvalidation:
+                extension += '_crossvalidation'
+            if args.gridsearch:
+                extension += '_gridsearch'
+            results_filename = os.path.join(results_path, f'results_{dataset}{extension}_{repetition}.csv')
+            n_splits = 10 if args.crossvalidation else 1
+            pd.DataFrame(np.array([best_h, best_C, best_gamma, accuracy_scores]).T,
+                    columns=[['h', 'C', 'gamma', 'accuracy']],
+                    index=['fold_id{}'.format(i) for i in range(n_splits)]).to_csv(results_filename)
+            print(f'Results saved in {results_filename}.')
+        else:
+            print('No results saved to file as --crossvalidation or --gridsearch were not selected.')
+
+    results_filename = os.path.join(results_path, f'results_{dataset}{extension}_all{repetitions}repetitions.csv')
+    with open(results_filename, 'w') as f:
+        for acc in all_accuracies:
+            f.write(f'{acc}\n')
+    print(f'Mean 10-fold accuracy: {np.mean(all_accuracies) * 100:2.2f} +- {np.std(all_accuracies) * 100:2.2f} %')
 
 if __name__ == '__main__':
     main()

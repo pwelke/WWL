@@ -1,10 +1,10 @@
-
 import networkx as nx
 import os
 import pickle
 from math import ceil, log10
 
-def write_graph_list(name, graph_list, data_root='../', ):
+
+def write_graph_list(name, graph_list, data_root):
     """Given a list of graphs in networkx format, write each of them
     in its own little gml file in a folder named name in the data_root folder.
     Create the folder, if necessary."""
@@ -33,7 +33,8 @@ def write_graph_list(name, graph_list, data_root='../', ):
         f.writelines(fixed_lines)
         f.close()
 
-def write_label_list(name, label_list, data_root='../', ):
+
+def write_label_list(name, label_list, data_root):
     """Create a Label.txt file in the folder named name from the labels that are provided."""
 
     data_path = os.path.join(data_root, name)
@@ -42,31 +43,37 @@ def write_label_list(name, label_list, data_root='../', ):
         f.write(str(l) + '\n')
     f.close()
 
-def join_graphs(name, data_dir='./'):
+
+def join_graphs(name, source_folder):
     """Find and combine all graphs of the same size (specified by name) from the different
     original large graphs.
     Create a list of these graphs and a label list, where the label of a graph corresponds to the
     dataset that it is initially from.
     That is, our task will be to predict from which original graph some ego net originates."""
-    datasets = filter(lambda x: x.find(name) != -1, os.listdir(data_dir))
+    datasets = filter(lambda x: x.find(name) != -1, os.listdir(source_folder))
     graph_list = list()
     label_list = list()
     for i,d in enumerate(datasets):
-        gnx_list = pickle.load(open(d, "rb"))
+        with open(os.path.join(source_folder, d), "rb") as f:
+            gnx_list = pickle.load(f)
         graph_list.extend(gnx_list)
         label_list.extend([i] * len(gnx_list))
 
     return graph_list, label_list
 
-def main(name='s80to100'):
-    graph_list, label_list = join_graphs(name)
-    write_graph_list(name, graph_list)
-    write_label_list(name, label_list)
+
+def main(name, source_folder, output_folder):
+    graph_list, label_list = join_graphs(name=name, source_folder=source_folder)
+    write_graph_list(name, graph_list, data_root=output_folder)
+    write_label_list(name, label_list, data_root=output_folder)
 
 if __name__ == '__main__':
-    main(name='s60to80')
-    main(name='s80to100')
-    main(name='s160to180')
-    main(name='s200to220')
-    main(name='s200to250')
-    main(name='s240to260')
+    source = '../data/egonets'
+    output = '../data'
+
+    main(name='s60to80', source_folder=source, output_folder=output)
+    main(name='s80to100', source_folder=source, output_folder=output)
+    main(name='s160to180', source_folder=source, output_folder=output)
+    main(name='s200to220', source_folder=source, output_folder=output)
+    main(name='s200to250', source_folder=source, output_folder=output)
+    main(name='s240to260', source_folder=source, output_folder=output)

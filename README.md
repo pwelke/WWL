@@ -5,6 +5,8 @@ _Wasserstein Weisfeiler-Lehman Graph Kernels_ available
 The repository contains both the package that implements the graph kernels (in `src`)
 and scripts to reproduce some of the results of the paper (in `experiments`).
 
+The fork adds some converter code for novel experiments with this code.
+
 ## Dependencies
 
 WWL relies on the following dependencies:
@@ -14,14 +16,13 @@ WWL relies on the following dependencies:
 - `POT`
 - `cython`
 
+Converter Code relies on
+
+- `networkx`
+
 ## Installation
 
-The easiest way is to install WWL from the Python Package Index (PyPI) via
-
-```sh
-$ pip install Cython numpy 
-$ pip install wwl
-```
+To replay the experiments, clone this repo. 
 
 ## Usage
 
@@ -48,6 +49,10 @@ Computational Biology Lab](https://www.bsse.ethz.ch/mlcb):
 - Matteo Togninalli ([GitHub](https://github.com/mtog))
 - Elisabetta Ghisu ([Github](https://github.com/eghisu))
 - Bastian Rieck ([GitHub](https://github.com/Pseudomanifold))
+
+The converter code and small changes introduced here are developed by
+
+- Pascal Welke ([GitHub](https://github.com/pwelke))
 
 ## Citation
 Please use the following BibTeX citation when using our method or comparing against it:

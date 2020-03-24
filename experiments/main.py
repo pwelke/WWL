@@ -16,8 +16,8 @@ from sklearn.metrics import accuracy_score
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--dataset', type=str, help='Provide the dataset name (MUTAG or Enzymes)',
-                            choices=['MUTAG', 'ENZYMES', 's60to80', 's80to100', 's160to180', 's200to220', 's200to250', 's240to260'])
+    parser.add_argument('-d', '--dataset', type=str, help='Provide the dataset name (corresponding to a folder in ../data/). If "ENZYMES", continuous labels will be assumed',
+                            choices=os.listdir('../data'))
     parser.add_argument('--crossvalidation', default=False, action='store_true', help='Enable a 10-fold crossvalidation')
     parser.add_argument('--gridsearch', default=False, action='store_true', help='Enable grid search')
     parser.add_argument('--sinkhorn', default=False, action='store_true', help='Use sinkhorn approximation')

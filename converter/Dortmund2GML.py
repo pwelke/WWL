@@ -29,11 +29,13 @@ def write_graph_list(name, graph_list, data_root):
         # stupid networkx requires labels to be equal to node ids.
         # we need to fix this
         def sanitize_labels(x):
+            def getint(v:str):
+                return int(v.strip('"'))
             if x.find('label') == -1:
                 return x + '\n'
             else:
                 v = x[10:]
-                label = g.node[int(v)]['label']
+                label = g.node[getint(v)]['label']
                 return f'    label "{label}"\n'
 
         fixed_lines = map(sanitize_labels, lines)
@@ -54,7 +56,13 @@ def dumpLabel(g):
     """Very very hacky. Works for BZR and DHFR to remove attributes and make labels compliant."""
     for v in g.nodes():
         g.node[v]['label'] = getLabel(g.node[v])
-        del g.node[v]['attribute']
+        if 'attribute' in g.node[v]:
+            del g.node[v]['attribute']
+
+    for e in g.edges():
+        g.edge[e[0]][e[1]]['label'] = getLabel(g.edge[e[0]][e[1]])
+        if 'attribute' in g.edge[e[0]][e[1]]:
+            del g.edge[e[0]][e[1]]['attribute']
 
 def load_graphs(db, path):
     graphStuff = d2l.graph_data_to_graph_list(path, db)

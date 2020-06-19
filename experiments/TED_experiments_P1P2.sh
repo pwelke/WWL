@@ -19,4 +19,4 @@ python3 TED_experiments_Synth_parse_avg.py ./results/${dataset}
 mv ../data/* ${o}/
 
 mkdir ./output/${dataset}
-mv ./output/syth* ./results/${dataset}
+mv ./output/syth* ./output/${dataset}

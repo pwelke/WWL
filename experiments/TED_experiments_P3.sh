@@ -1,8 +1,8 @@
 dataset=Synth_P3
 o=../${dataset}
 
-#f=/opt/mlfta/ted_kernel/${dataset}
-#python3 ../converter/synth.py $f $o
+f=/opt/mlfta/ted_kernel/${dataset}
+python3 ../converter/synth.py $f $o
 mv ${o}/* ../data/
 
 for f in ../data/syth*; do
@@ -19,4 +19,4 @@ python3 TED_experiments_Synth_parse_avg.py ./results/${dataset}
 mv ../data/* ${o}/
 
 mkdir ./output/${dataset}
-mv ./output/syth* ./results/${dataset}
+mv ./output/syth* ./output/${dataset}
